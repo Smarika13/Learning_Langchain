@@ -1,10 +1,16 @@
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import FastEmbedEmbeddings
+import os
 
 
 def create_embeddings(chunks):
     embedding_model=FastEmbedEmbeddings()
-    vector_store=FAISS.from_documents(chunks, embedding_model)
+    if os.path.exists("faiss_index"):
+       vector_store = FAISS.load_local("faiss_index",embedding_model)
+    else:
+        vector_store=FAISS.from_documents(chunks, embedding_model)
+        vector_store.save_local("faiss_index")
+        
     return vector_store
 
 #TESTBLOCK
