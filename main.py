@@ -5,10 +5,19 @@ from services.embedding_service import create_embeddings
 from services.retriever_service import create_retriever
 from app.chatbot import create_rag_chain
 from langchain_core.messages import HumanMessage, AIMessage
+from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 app=FastAPI()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 chat_history = []
+
 
 
 chunks = load_and_chunk_documents()
@@ -21,9 +30,17 @@ class ChatRequest(BaseModel):
 
 @app.post("/chat")
 def chat(request:ChatRequest):
-    response = rag_chain.invoke({
-        "question":request.question,
-        "chat_history":chat_history})
-    chat_history.append(HumanMessage(content=request.question))
-    chat_history.append(AIMessage(content=response))
-    return {"answer":response}
+    def generate():
+        full_response=""
+        for chunk in rag_chain.stream({
+            "question":request.question, 
+            "chat_history":chat_history}):
+            full_response += chunk
+            yield chunk
+    
+        chat_history.append(HumanMessage(content=request.question))
+        chat_history.append(AIMessage(content=full_response))
+
+
+    return StreamingResponse(generate(),media_type="text/plain")
+
