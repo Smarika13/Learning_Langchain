@@ -6,8 +6,10 @@ import os
 def create_embeddings(chunks):
     embedding_model=FastEmbedEmbeddings()
     if os.path.exists("faiss_index"):
-       vector_store = FAISS.load_local("faiss_index",embedding_model)
+       print("Loading FAISS index from disk...")
+       vector_store = FAISS.load_local("faiss_index",embedding_model,allow_dangerous_deserialization=True)
     else:
+        print("Building FAISS index from scratch...") 
         vector_store=FAISS.from_documents(chunks, embedding_model)
         vector_store.save_local("faiss_index")
         
